@@ -58,28 +58,6 @@ resource "aws_subnet" "aft_vpc_public_subnet_02" {
 # Route Tables
 #########################################
 
-resource "aws_route_table" "aft_vpc_private_subnet_01" {
-  vpc_id = aws_vpc.aft_vpc.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.aft-vpc-natgw-01.id
-  }
-  tags = {
-    Name = "aft-vpc-private-subnet-01"
-  }
-}
-
-resource "aws_route_table" "aft_vpc_private_subnet_02" {
-  vpc_id = aws_vpc.aft_vpc.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.aft-vpc-natgw-02.id
-  }
-  tags = {
-    Name = "aft-vpc-private-subnet-02"
-  }
-}
-
 resource "aws_route_table" "aft_vpc_public_subnet_01" {
   vpc_id = aws_vpc.aft_vpc.id
   route {
@@ -91,14 +69,20 @@ resource "aws_route_table" "aft_vpc_public_subnet_01" {
   }
 }
 
-resource "aws_route_table_association" "aft_vpc_private_subnet_01" {
-  subnet_id      = aws_subnet.aft_vpc_private_subnet_01.id
-  route_table_id = aws_route_table.aft_vpc_private_subnet_01.id
+resource "aws_route" "private_subnet_nat_instance_route_1" {
+  route_table_id         = aws_instance.nat_instance.route_table_id
+  destination_cidr_block = "0.0.0.0/0"
+  instance_id            = aws_instance.nat_instance.id
 }
 
-resource "aws_route_table_association" "aft_vpc_private_subnet_02" {
+resource "aws_route_table_association" "private_subnet_association_1" {
+  subnet_id      = aws_subnet.aft_vpc_private_subnet_01.id
+  route_table_id = aws_instance.nat_instance.route_table_id
+}
+
+resource "aws_route_table_association" "private_subnet_association_2" {
   subnet_id      = aws_subnet.aft_vpc_private_subnet_02.id
-  route_table_id = aws_route_table.aft_vpc_private_subnet_02.id
+  route_table_id = aws_instance.nat_instance.route_table_id
 }
 
 resource "aws_route_table_association" "aft_vpc_public_subnet_01" {
@@ -164,6 +148,26 @@ resource "aws_security_group" "aft_vpc_endpoint_sg" {
   }
 }
 
+resource "aws_security_group" "nat_instance" {
+  name        = "nat-instance"
+  description = "Security group for the NAT instance"
+  vpc_id      = aws_vpc.aft_vpc.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = concat(var.aft_vpc_private_subnet_01_cidr, var.aft_vpc_private_subnet_02_cidr)
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 #########################################
 # Internet & NAT GWs
 #########################################
@@ -177,35 +181,32 @@ resource "aws_internet_gateway" "aft-vpc-igw" {
 }
 
 resource "aws_eip" "aft-vpc-natgw-01" {
-  vpc = true
+  vpc      = true
+  instance = aws_instance.nat_instance.id
 }
 
-resource "aws_eip" "aft-vpc-natgw-02" {
-  vpc = true
-}
+# instead of a pair of nat gateways (expensive), just launch a single nat instance (cheaper)
+resource "aws_instance" "nat_instance" {
+  ami           = "ami-b270a8cf" # amazon 2 in us-east-1
+  instance_type = "t2.micro"
 
-resource "aws_nat_gateway" "aft-vpc-natgw-01" {
-  depends_on = [aws_internet_gateway.aft-vpc-igw]
+  subnet_id         = aws_subnet.aft_vpc_public_subnet_01.id
+  security_groups   = [aws_security_group.nat_instance.id]
+  source_dest_check = false
 
-  allocation_id = aws_eip.aft-vpc-natgw-01.id
-  subnet_id     = aws_subnet.aft_vpc_public_subnet_01.id
+  user_data = <<-EOF
+              #!/bin/bash
+              echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+              sysctl -p
+              iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+              yum install -y iptables-services
+              systemctl enable --now iptables
+              iptables-save > /etc/sysconfig/iptables
+              EOF
 
   tags = {
-    Name = "aft-vpc-natgw-01"
+    Name = "NAT Instance"
   }
-
-}
-
-resource "aws_nat_gateway" "aft-vpc-natgw-02" {
-  depends_on = [aws_internet_gateway.aft-vpc-igw]
-
-  allocation_id = aws_eip.aft-vpc-natgw-02.id
-  subnet_id     = aws_subnet.aft_vpc_public_subnet_02.id
-
-  tags = {
-    Name = "aft-vpc-natgw-02"
-  }
-
 }
 
 #########################################
