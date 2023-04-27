@@ -173,7 +173,7 @@ resource "aws_security_group" "nat_instance" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = concat(var.aft_vpc_private_subnet_01_cidr, var.aft_vpc_private_subnet_02_cidr)
+    cidr_blocks = [var.aft_vpc_private_subnet_01_cidr, var.aft_vpc_private_subnet_02_cidr]
   }
 
   egress {
