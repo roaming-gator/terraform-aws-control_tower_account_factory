@@ -61,8 +61,8 @@ resource "aws_subnet" "aft_vpc_public_subnet_02" {
 resource "aws_route_table" "aft_vpc_private_subnet_01" {
   vpc_id = aws_vpc.aft_vpc.id
   route {
-    cidr_block           = "0.0.0.0/0"
-    network_interface_id = aws_instance.nat_instance.primary_network_interface_id
+    cidr_block  = "0.0.0.0/0"
+    instance_id = aws_instance.nat_instance.id
   }
   tags = {
     Name = "aft-vpc-private-subnet-01"
@@ -72,8 +72,8 @@ resource "aws_route_table" "aft_vpc_private_subnet_01" {
 resource "aws_route_table" "aft_vpc_private_subnet_02" {
   vpc_id = aws_vpc.aft_vpc.id
   route {
-    cidr_block           = "0.0.0.0/0"
-    network_interface_id = aws_instance.nat_instance.primary_network_interface_id
+    cidr_block  = "0.0.0.0/0"
+    instance_id = aws_instance.nat_instance.id
   }
   tags = {
     Name = "aft-vpc-private-subnet-02"
@@ -203,22 +203,13 @@ resource "aws_eip" "aft-vpc-natgw-01" {
 
 # instead of a pair of nat gateways (expensive), just launch a single nat instance (cheaper)
 resource "aws_instance" "nat_instance" {
-  ami           = "ami-b270a8cf" # amazon 2 in us-east-1
-  instance_type = "t2.micro"
+  # https://fck-nat.dev/
+  ami           = "ami-05b6d5a2e26f13c93" # fck-nat-amzn2-hvm-1.2.0-20220812-arm64-ebs
+  instance_type = "t4g.nano"
 
   subnet_id         = aws_subnet.aft_vpc_public_subnet_01.id
   security_groups   = [aws_security_group.nat_instance.id]
   source_dest_check = false
-
-  user_data = <<-EOF
-              #!/bin/bash
-              echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
-              sysctl -p
-              iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-              yum install -y iptables-services
-              systemctl enable --now iptables
-              iptables-save > /etc/sysconfig/iptables
-              EOF
 
   tags = {
     Name = "NAT Instance"
