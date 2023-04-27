@@ -58,6 +58,28 @@ resource "aws_subnet" "aft_vpc_public_subnet_02" {
 # Route Tables
 #########################################
 
+resource "aws_route_table" "aft_vpc_private_subnet_01" {
+  vpc_id = aws_vpc.aft_vpc.id
+  route {
+    cidr_block           = "0.0.0.0/0"
+    network_interface_id = aws_instance.nat_instance.network_interface_id
+  }
+  tags = {
+    Name = "aft-vpc-private-subnet-01"
+  }
+}
+
+resource "aws_route_table" "aft_vpc_private_subnet_02" {
+  vpc_id = aws_vpc.aft_vpc.id
+  route {
+    cidr_block           = "0.0.0.0/0"
+    network_interface_id = aws_instance.nat_instance.network_interface_id
+  }
+  tags = {
+    Name = "aft-vpc-private-subnet-02"
+  }
+}
+
 resource "aws_route_table" "aft_vpc_public_subnet_01" {
   vpc_id = aws_vpc.aft_vpc.id
   route {
@@ -69,20 +91,14 @@ resource "aws_route_table" "aft_vpc_public_subnet_01" {
   }
 }
 
-resource "aws_route" "private_subnet_nat_instance_route_1" {
-  route_table_id         = aws_instance.nat_instance.route_table_id
-  destination_cidr_block = "0.0.0.0/0"
-  instance_id            = aws_instance.nat_instance.id
-}
-
 resource "aws_route_table_association" "private_subnet_association_1" {
   subnet_id      = aws_subnet.aft_vpc_private_subnet_01.id
-  route_table_id = aws_instance.nat_instance.route_table_id
+  route_table_id = aws_route_table.aft_vpc_private_subnet_01.id
 }
 
 resource "aws_route_table_association" "private_subnet_association_2" {
   subnet_id      = aws_subnet.aft_vpc_private_subnet_02.id
-  route_table_id = aws_instance.nat_instance.route_table_id
+  route_table_id = aws_route_table.aft_vpc_private_subnet_02.id
 }
 
 resource "aws_route_table_association" "aft_vpc_public_subnet_01" {
