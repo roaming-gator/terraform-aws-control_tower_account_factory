@@ -62,7 +62,7 @@ resource "aws_route_table" "aft_vpc_private_subnet_01" {
   vpc_id = aws_vpc.aft_vpc.id
   route {
     cidr_block           = "0.0.0.0/0"
-    network_interface_id = aws_instance.nat_instance.network_interface_id
+    network_interface_id = aws_instance.nat_instance.primary_network_interface_id
   }
   tags = {
     Name = "aft-vpc-private-subnet-01"
@@ -73,7 +73,7 @@ resource "aws_route_table" "aft_vpc_private_subnet_02" {
   vpc_id = aws_vpc.aft_vpc.id
   route {
     cidr_block           = "0.0.0.0/0"
-    network_interface_id = aws_instance.nat_instance.network_interface_id
+    network_interface_id = aws_instance.nat_instance.primary_network_interface_id
   }
   tags = {
     Name = "aft-vpc-private-subnet-02"
