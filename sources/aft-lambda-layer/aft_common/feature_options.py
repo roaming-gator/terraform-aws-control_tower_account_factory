@@ -83,7 +83,7 @@ def get_vpc_internet_gateways(resource: EC2ServiceResource, vpc: str) -> List[st
     igws = []
     for i in vpc_resource.internet_gateways.all():
         igws.append(i.id)
-    logger.info("SGs: " + str(igws))
+    logger.info("IGWs: " + str(igws))
     return igws
 
 

@@ -202,6 +202,8 @@ resource "aws_eip" "aft-vpc-natgw-01" {
 }
 
 # instead of a pair of nat gateways (expensive), just launch a single nat instance (cheaper)
+# todo: figure out why it always wants to replace the instance whenever we run the apply
+# appears to try and add the security group, even though it should already be there
 resource "aws_instance" "nat_instance" {
   # https://fck-nat.dev/
   ami           = "ami-05b6d5a2e26f13c93" # fck-nat-amzn2-hvm-1.2.0-20220812-arm64-ebs
